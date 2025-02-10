@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using Jellyfin.Api.Extensions;
 using Jellyfin.Api.Helpers;
 using Jellyfin.Api.ModelBinders;
@@ -62,9 +64,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("Songs/{itemId}/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromSong(
         [FromRoute, Required] Guid itemId,
         [FromQuery] Guid? userId,
@@ -75,11 +79,16 @@ public class InstantMixController : BaseJellyfinApiController
         [FromQuery] int? imageTypeLimit,
         [FromQuery, ModelBinder(typeof(CommaDelimitedArrayModelBinder))] ImageType[] enableImageTypes)
     {
-        var item = _libraryManager.GetItemById(itemId);
         userId = RequestHelpers.GetUserId(User, userId);
         var user = userId.IsNullOrEmpty()
             ? null
             : _userManager.GetUserById(userId.Value);
+        var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
         var dtoOptions = new DtoOptions { Fields = fields }
             .AddClientFields(User)
             .AddAdditionalDtoOptions(enableImages, enableUserData, imageTypeLimit, enableImageTypes);
@@ -99,9 +108,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("Albums/{itemId}/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromAlbum(
         [FromRoute, Required] Guid itemId,
         [FromQuery] Guid? userId,
@@ -112,15 +123,20 @@ public class InstantMixController : BaseJellyfinApiController
         [FromQuery] int? imageTypeLimit,
         [FromQuery, ModelBinder(typeof(CommaDelimitedArrayModelBinder))] ImageType[] enableImageTypes)
     {
-        var album = _libraryManager.GetItemById(itemId);
         userId = RequestHelpers.GetUserId(User, userId);
         var user = userId.IsNullOrEmpty()
             ? null
             : _userManager.GetUserById(userId.Value);
+        var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
         var dtoOptions = new DtoOptions { Fields = fields }
             .AddClientFields(User)
             .AddAdditionalDtoOptions(enableImages, enableUserData, imageTypeLimit, enableImageTypes);
-        var items = _musicManager.GetInstantMixFromItem(album, user, dtoOptions);
+        var items = _musicManager.GetInstantMixFromItem(item, user, dtoOptions);
         return GetResult(items, user, limit, dtoOptions);
     }
 
@@ -136,9 +152,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("Playlists/{itemId}/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromPlaylist(
         [FromRoute, Required] Guid itemId,
         [FromQuery] Guid? userId,
@@ -149,15 +167,20 @@ public class InstantMixController : BaseJellyfinApiController
         [FromQuery] int? imageTypeLimit,
         [FromQuery, ModelBinder(typeof(CommaDelimitedArrayModelBinder))] ImageType[] enableImageTypes)
     {
-        var playlist = (Playlist)_libraryManager.GetItemById(itemId);
         userId = RequestHelpers.GetUserId(User, userId);
         var user = userId.IsNullOrEmpty()
             ? null
             : _userManager.GetUserById(userId.Value);
+        var item = _libraryManager.GetItemById<Playlist>(itemId, user);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
         var dtoOptions = new DtoOptions { Fields = fields }
             .AddClientFields(User)
             .AddAdditionalDtoOptions(enableImages, enableUserData, imageTypeLimit, enableImageTypes);
-        var items = _musicManager.GetInstantMixFromItem(playlist, user, dtoOptions);
+        var items = _musicManager.GetInstantMixFromItem(item, user, dtoOptions);
         return GetResult(items, user, limit, dtoOptions);
     }
 
@@ -209,9 +232,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("Artists/{itemId}/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromArtists(
         [FromRoute, Required] Guid itemId,
         [FromQuery] Guid? userId,
@@ -222,11 +247,16 @@ public class InstantMixController : BaseJellyfinApiController
         [FromQuery] int? imageTypeLimit,
         [FromQuery, ModelBinder(typeof(CommaDelimitedArrayModelBinder))] ImageType[] enableImageTypes)
     {
-        var item = _libraryManager.GetItemById(itemId);
         userId = RequestHelpers.GetUserId(User, userId);
         var user = userId.IsNullOrEmpty()
             ? null
             : _userManager.GetUserById(userId.Value);
+        var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
         var dtoOptions = new DtoOptions { Fields = fields }
             .AddClientFields(User)
             .AddAdditionalDtoOptions(enableImages, enableUserData, imageTypeLimit, enableImageTypes);
@@ -246,9 +276,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("Items/{itemId}/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromItem(
         [FromRoute, Required] Guid itemId,
         [FromQuery] Guid? userId,
@@ -259,11 +291,16 @@ public class InstantMixController : BaseJellyfinApiController
         [FromQuery] int? imageTypeLimit,
         [FromQuery, ModelBinder(typeof(CommaDelimitedArrayModelBinder))] ImageType[] enableImageTypes)
     {
-        var item = _libraryManager.GetItemById(itemId);
         userId = RequestHelpers.GetUserId(User, userId);
         var user = userId.IsNullOrEmpty()
             ? null
             : _userManager.GetUserById(userId.Value);
+        var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
         var dtoOptions = new DtoOptions { Fields = fields }
             .AddClientFields(User)
             .AddAdditionalDtoOptions(enableImages, enableUserData, imageTypeLimit, enableImageTypes);
@@ -283,9 +320,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("Artists/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [Obsolete("Use GetInstantMixFromArtists")]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromArtists2(
         [FromQuery, Required] Guid id,
@@ -320,9 +359,11 @@ public class InstantMixController : BaseJellyfinApiController
     /// <param name="imageTypeLimit">Optional. The max number of images to return, per image type.</param>
     /// <param name="enableImageTypes">Optional. The image types to include in the output.</param>
     /// <response code="200">Instant playlist returned.</response>
+    /// <response code="404">Item not found.</response>
     /// <returns>A <see cref="QueryResult{BaseItemDto}"/> with the playlist items.</returns>
     [HttpGet("MusicGenres/InstantMix")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<QueryResult<BaseItemDto>> GetInstantMixFromMusicGenreById(
         [FromQuery, Required] Guid id,
         [FromQuery] Guid? userId,
@@ -333,11 +374,16 @@ public class InstantMixController : BaseJellyfinApiController
         [FromQuery] int? imageTypeLimit,
         [FromQuery, ModelBinder(typeof(CommaDelimitedArrayModelBinder))] ImageType[] enableImageTypes)
     {
-        var item = _libraryManager.GetItemById(id);
         userId = RequestHelpers.GetUserId(User, userId);
         var user = userId.IsNullOrEmpty()
             ? null
             : _userManager.GetUserById(userId.Value);
+        var item = _libraryManager.GetItemById<BaseItem>(id, user);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
         var dtoOptions = new DtoOptions { Fields = fields }
             .AddClientFields(User)
             .AddAdditionalDtoOptions(enableImages, enableUserData, imageTypeLimit, enableImageTypes);
@@ -345,23 +391,19 @@ public class InstantMixController : BaseJellyfinApiController
         return GetResult(items, user, limit, dtoOptions);
     }
 
-    private QueryResult<BaseItemDto> GetResult(List<BaseItem> items, User? user, int? limit, DtoOptions dtoOptions)
+    private QueryResult<BaseItemDto> GetResult(IReadOnlyList<BaseItem> items, User? user, int? limit, DtoOptions dtoOptions)
     {
-        var list = items;
+        var totalCount = items.Count;
 
-        var totalCount = list.Count;
-
-        if (limit.HasValue && limit < list.Count)
+        if (limit.HasValue && limit < items.Count)
         {
-            list = list.GetRange(0, limit.Value);
+            items = items.Take(limit.Value).ToArray();
         }
-
-        var returnList = _dtoService.GetBaseItemDtos(list, dtoOptions, user);
 
         var result = new QueryResult<BaseItemDto>(
             0,
             totalCount,
-            returnList);
+            _dtoService.GetBaseItemDtos(items, dtoOptions, user));
 
         return result;
     }
